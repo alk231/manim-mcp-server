@@ -1,2 +1,5 @@
-manim
 fastmcp
+mcp
+manim
+fastapi
+uvicorn[standard]
