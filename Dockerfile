@@ -1,27 +1,34 @@
 FROM python:3.11-slim
 
+# Install system libs required by Manim
 RUN apt-get update && apt-get install -y \
-    ffmpeg \
     libcairo2 \
     libcairo2-dev \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libfreetype6 \
-    libfreetype6-dev \
-    libgl1 \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    libpango1.0-dev \
+    libglib2.0-dev \
+    ffmpeg \
+    pkg-config \
+    python3-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install required Python packages
-COPY requirements.txt /app/requirements.txt
+# Create app directory
+WORKDIR /app
+
+# Copy requirements
+COPY requirements.txt /app/
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copy your code
-COPY src /app/src
+# Copy project
+COPY . /app/
 
-WORKDIR /app/src
+# MCP server runs on port 8000
+ENV PORT=8000
 
-ENV MANIM_EXECUTABLE="manim"
-
+# Expose port
 EXPOSE 8000
 
-CMD ["python", "manim_server.py"]
+# Run MCP server
+CMD ["python", "src/manim_server.py"]
