@@ -1,7 +1,5 @@
-# ---- Base Image ----
 FROM python:3.11-slim
 
-# ---- Install System Dependencies for Manim ----
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libcairo2 \
@@ -13,21 +11,17 @@ RUN apt-get update && apt-get install -y \
     libgl1 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ---- Install Manim ----
-RUN pip install --no-cache-dir manim
+# Install required Python packages
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# ---- Set Work Directory ----
-WORKDIR /app
+# Copy your code
+COPY src /app/src
 
-# ---- Copy Your MCP Server Code ----
-COPY . .
+WORKDIR /app/src
 
-# ---- Environment Variables ----
 ENV MANIM_EXECUTABLE="manim"
-ENV PYTHONUNBUFFERED=1
 
-# ---- Expose Port for Streamable HTTP MCP ----
 EXPOSE 8000
 
-# ---- Start the MCP Server ----
 CMD ["python", "manim_server.py"]
