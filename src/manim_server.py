@@ -1,52 +1,51 @@
-import subprocess
+# src/manim_server.py
 import os
+import subprocess
 import shutil
+from fastapi import FastAPI
+import uvicorn
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP()
 
-# On Railway/Docker, the manim executable is just "manim"
-MANIM_EXECUTABLE = os.getenv("MANIM_EXECUTABLE", "manim")
-
+MANIM_EXECUTABLE = os.getenv("MANIM_EXECUTABLE", "manim")  # in container use "manim"
 BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media")
 os.makedirs(BASE_DIR, exist_ok=True)
 
 
-# -------------------- MANIM EXECUTION TOOL --------------------
 @mcp.tool()
 def execute_manim_code(manim_code: str) -> str:
-    """Runs user-provided Manim code and generates a video."""
-
+    """
+    Write the provided python code to a scene file and run manim.
+    Returns success message or stderr on failure.
+    Note: keep scenes simple for 'lite' environment.
+    """
     tmpdir = os.path.join(BASE_DIR, "manim_tmp")
     os.makedirs(tmpdir, exist_ok=True)
-
     script_path = os.path.join(tmpdir, "scene.py")
 
     try:
-        with open(script_path, "w") as f:
+        with open(script_path, "w", encoding="utf-8") as f:
             f.write(manim_code)
 
-        # Run manim (Linux-friendly)
-        result = subprocess.run(
-            [MANIM_EXECUTABLE, "-p", script_path],
-            capture_output=True,
-            text=True,
-            cwd=tmpdir,
-        )
+        # Use manim CLI to render scene.py — default config
+        cmd = [MANIM_EXECUTABLE, script_path, "--format", "mp4", "-qk"]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=tmpdir, timeout=120)
 
         if result.returncode == 0:
-            return f"Execution successful. Video saved in: {tmpdir}"
+            return {"status": "ok", "message": "Execution successful", "output_dir": tmpdir}
         else:
-            return f"Execution failed:\n{result.stderr}"
+            return {"status": "error", "stderr": result.stderr}
 
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "stderr": "Execution timed out"}
     except Exception as e:
-        return f"Error during execution: {str(e)}"
+        return {"status": "error", "stderr": str(e)}
 
 
-# -------------------- CLEANUP TOOL --------------------
 @mcp.tool()
 def cleanup_manim_temp_dir(directory: str) -> str:
-    """Deletes the Manim temp directory."""
     try:
         if os.path.exists(directory):
             shutil.rmtree(directory)
@@ -56,12 +55,16 @@ def cleanup_manim_temp_dir(directory: str) -> str:
         return f"Cleanup error: {str(e)}"
 
 
-# -------------------- MCP SERVER START --------------------
+# FastAPI wrapper + health endpoint
+app = FastAPI()
+mcp.mount_to_fastapi(app)
+
+
+@app.get("/mcp/health")
+def health():
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-
-    mcp.run(
-        transport="streamable-http",   # REQUIRED for HTTP servers
-        host="0.0.0.0",
-        port=port
-    )
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
