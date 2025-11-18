@@ -1,0 +1,24 @@
+[project]
+name = "manim-mcp-server"
+version = "0.2.0"
+description = "MCP server for executing Manim animation code"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=0.2.0",
+    "manim>=0.18.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0"
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.fastmcp]
+entrypoint = "src.manim_server:mcp"
+transport = "sse"
