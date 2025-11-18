@@ -2,121 +2,147 @@
 
 ![Manim MCP Demo](Demo-manim-mcp.gif)
 
-
 ## Overview
 
-This is an MCP (Model Context Protocol) server that executes Manim animation code and returns the generated video. It allows users to send Manim scripts and receive the rendered animation.
+A Model Context Protocol (MCP) server that executes Manim animation code and returns generated videos. This server allows AI assistants like Claude to dynamically generate mathematical animations using Manim.
 
 ## Features
 
-- Executes Manim Python scripts.
-- Saves animation output in a visible media folder.
-- Allows users to clean up temporary files after execution.
-- Portable and configurable via environment variables.
+- ✨ Execute Manim Python scripts via MCP
+- 📁 Automatic media folder management
+- 🧹 Cleanup tools for temporary files
+- ⚙️ Configurable via environment variables
+- 🚀 Compatible with FastMCP Cloud
 
-## Installation
+## Quick Start with FastMCP Cloud
+
+This server is optimized for deployment on FastMCP Cloud:
+
+1. Fork this repository
+2. Deploy to FastMCP Cloud using the repository URL
+3. The server will be automatically configured using `pyproject.toml`
+
+## Local Installation
 
 ### Prerequisites
 
-Ensure you have the following installed:
+- Python 3.11+
+- Manim (Community Edition)
+- pip or uv package manager
 
-- Python 3.8+
-- Manim (Community Version)
-- MCP
-
-### Install Manim
-
-```sh
-pip install manim
+### Install Dependencies
+```bash
+pip install -e .
 ```
 
-### Install MCP
-
-```sh
-pip install mcp
+Or using uv (faster):
+```bash
+uv pip install -e .
 ```
 
-### Clone the Repository
-
-```sh
-git clone https://github.com/abhiemj/manim-mcp-server.git
-cd manim-mcp-server
+### Run the Server
+```bash
+python src/manim_server.py
 ```
 
-## Integration with Claude
+## Integration with Claude Desktop
 
-To integrate the Manim MCP server with Claude, add the following to your `claude_desktop_config.json` file:
-
+Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-     "manim-server": {
-      "command": "/absolute/path/to/python",
-      "args": [
-        "/absolute/path/to/manim-mcp-server/src/manim_server.py"
-      ],
+    "manim-server": {
+      "command": "python",
+      "args": ["/absolute/path/to/manim-mcp-server/src/manim_server.py"],
       "env": {
-        "MANIM_EXECUTABLE": "/Users/[Your_username]/anaconda3/envs/manim2/Scripts/manim.exe"
+        "MANIM_EXECUTABLE": "manim"
       }
     }
   }
 }
 ```
 
-### Finding Your Python Path
+### Finding Paths
 
-To find your Python executable path, use the following command:
-
-#### Windows (PowerShell):
-```sh
+**Windows (PowerShell):**
+```powershell
 (Get-Command python).Source
 ```
 
-#### Windows (Command Prompt/Terminal):
-```sh
-where python
-```
-
-#### Linux/macOS (Terminal):
-```sh
+**Linux/macOS:**
+```bash
 which python
 ```
 
-This ensures that Claude can communicate with the Manim MCP server to generate animations dynamically.
+## Available Tools
+
+### `execute_manim_code`
+Executes Manim animation code and generates video output.
+
+**Parameters:**
+- `manim_code` (str): Python code containing Manim scene definition
+
+**Returns:**
+- Dictionary with status, message, and output details
+
+### `cleanup_manim_temp_dir`
+Cleans up temporary Manim output directory.
+
+**Parameters:**
+- `directory` (str): Path to directory to clean up
+
+**Returns:**
+- Dictionary with status and message
+
+## Example Usage
+```python
+from manim import *
+
+class SquareToCircle(Scene):
+    def construct(self):
+        square = Square()
+        circle = Circle()
+        circle.set_fill(PINK, opacity=0.5)
+        self.play(Create(square))
+        self.play(Transform(square, circle))
+        self.wait()
+```
+
+## Project Structure
+```
+manim-mcp-server/
+├── src/
+│   ├── manim_server.py    # Main MCP server
+│   └── media/             # Output directory
+├── pyproject.toml         # Project configuration
+├── README.md              # Documentation
+└── LICENSE.txt            # MIT License
+```
+
+## Configuration
+
+Environment variables:
+- `MANIM_EXECUTABLE`: Path to Manim executable (default: "manim")
 
 ## Contributing
 
-1. Fork the repository.
-2. Create a new branch:
-   ```sh
-   git checkout -b add-feature
-   ```
-3. Make changes and commit:
-   ```sh
-   git commit -m "Added a new feature"
-   ```
-4. Push to your fork:
-   ```sh
-   git push origin add-feature
-   ```
-5. Open a pull request.
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -m "Add feature"`
+4. Push to branch: `git push origin feature-name`
+5. Open a pull request
 
 ## License
 
-This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
+MIT License - see LICENSE.txt for details
 
-## Author
+## Credits
 
-Created by **[abhiemj](https://github.com/abhiemj)**. Contributions welcome! 🚀
+- Created by **[abhiemj](https://github.com/abhiemj)**
+- Adapted for FastMCP Cloud by the community
+- Featured in [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers)
+- Thanks to [Manim Community](https://www.manim.community/)
 
-### **Listed in Awesome MCP Servers**  
-This repository is featured in the [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers) repository under the **Animation & Video** category. Check it out along with other great MCP server implementations!
+## Connect
 
-
-## **Acknowledgments**  
-- Thanks to the [Manim Community](https://www.manim.community/) for their amazing animation library.  
-- Inspired by the open-source MCP ecosystem.
-
-## Find me at
-<a href="https://www.instagram.com/aiburner_official" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/instagram.svg" alt="aiburner_official" height="30" width="40" /></a>
-@aiburner_official
+Instagram: [@aiburner_official](https://www.instagram.com/aiburner_official)

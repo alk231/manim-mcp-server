@@ -2,69 +2,100 @@
 import os
 import subprocess
 import shutil
-from fastapi import FastAPI
-import uvicorn
-from mcp.server.fastmcp import FastMCP
+from pathlib import Path
+from fastmcp import FastMCP
 
-mcp = FastMCP()
+# Initialize FastMCP server
+mcp = FastMCP("Manim Server")
 
-MANIM_EXECUTABLE = os.getenv("MANIM_EXECUTABLE", "manim")  # in container use "manim"
-BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media")
-os.makedirs(BASE_DIR, exist_ok=True)
+# Configuration
+MANIM_EXECUTABLE = os.getenv("MANIM_EXECUTABLE", "manim")
+BASE_DIR = Path(__file__).parent / "media"
+BASE_DIR.mkdir(exist_ok=True)
 
 
 @mcp.tool()
-def execute_manim_code(manim_code: str) -> str:
+def execute_manim_code(manim_code: str) -> dict:
     """
-    Write the provided python code to a scene file and run manim.
-    Returns success message or stderr on failure.
-    Note: keep scenes simple for 'lite' environment.
+    Execute Manim animation code and generate video output.
+
+    Args:
+        manim_code: Python code containing Manim scene definition
+
+    Returns:
+        Dictionary with status, message, and output directory or error details
+
+    Note: Keep scenes simple for lightweight environment. Avoid heavy LaTeX rendering.
     """
-    tmpdir = os.path.join(BASE_DIR, "manim_tmp")
-    os.makedirs(tmpdir, exist_ok=True)
-    script_path = os.path.join(tmpdir, "scene.py")
+    tmpdir = BASE_DIR / "manim_tmp"
+    tmpdir.mkdir(exist_ok=True)
+    script_path = tmpdir / "scene.py"
 
     try:
-        with open(script_path, "w", encoding="utf-8") as f:
-            f.write(manim_code)
+        # Write the Manim code to file
+        script_path.write_text(manim_code, encoding="utf-8")
 
-        # Use manim CLI to render scene.py — default config
-        cmd = [MANIM_EXECUTABLE, script_path, "--format", "mp4", "-qk"]
+        # Execute Manim CLI to render the scene
+        cmd = [
+            MANIM_EXECUTABLE,
+            str(script_path),
+            "--format",
+            "mp4",
+            "-qk",  # Medium quality, render last frame
+        ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=tmpdir, timeout=120)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=str(tmpdir), timeout=120
+        )
 
         if result.returncode == 0:
-            return {"status": "ok", "message": "Execution successful", "output_dir": tmpdir}
+            return {
+                "status": "success",
+                "message": "Animation rendered successfully",
+                "output_dir": str(tmpdir),
+                "stdout": result.stdout,
+            }
         else:
-            return {"status": "error", "stderr": result.stderr}
+            return {
+                "status": "error",
+                "message": "Manim execution failed",
+                "stderr": result.stderr,
+                "stdout": result.stdout,
+            }
 
     except subprocess.TimeoutExpired:
-        return {"status": "error", "stderr": "Execution timed out"}
+        return {
+            "status": "error",
+            "message": "Execution timed out (exceeded 120 seconds)",
+        }
     except Exception as e:
-        return {"status": "error", "stderr": str(e)}
+        return {"status": "error", "message": f"Unexpected error: {str(e)}"}
 
 
 @mcp.tool()
-def cleanup_manim_temp_dir(directory: str) -> str:
+def cleanup_manim_temp_dir(directory: str) -> dict:
+    """
+    Clean up temporary Manim output directory.
+
+    Args:
+        directory: Path to directory to clean up
+
+    Returns:
+        Dictionary with status and message
+    """
     try:
-        if os.path.exists(directory):
-            shutil.rmtree(directory)
-            return f"Cleanup successful for: {directory}"
-        return f"Directory not found: {directory}"
+        dir_path = Path(directory)
+        if dir_path.exists():
+            shutil.rmtree(dir_path)
+            return {
+                "status": "success",
+                "message": f"Successfully cleaned up: {directory}",
+            }
+        return {"status": "warning", "message": f"Directory not found: {directory}"}
     except Exception as e:
-        return f"Cleanup error: {str(e)}"
+        return {"status": "error", "message": f"Cleanup failed: {str(e)}"}
 
 
-# FastAPI wrapper + health endpoint
-app = FastAPI()
-mcp.mount_to_fastapi(app)
-
-
-@app.get("/mcp/health")
-def health():
-    return {"status": "ok"}
-
-
+# Run the server
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    mcp.run(transport="sse")
